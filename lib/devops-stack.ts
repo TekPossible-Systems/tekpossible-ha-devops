@@ -14,8 +14,12 @@ import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as codepipeline_actions from 'aws-cdk-lib/aws-codepipeline-actions';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 
-function create_repos(scope: Construct, region_name: string, config: any): codecommit.Repository[] {
-  var repo_list: codecommit.Repository[] = [];
+
+var __infrastructure_repo: any;
+var __image_repo: any;
+var __software_repo: any;
+
+function create_repos(scope: Construct, region_name: string, config: any) {
   /*
   Format for repo: 
   {
@@ -31,10 +35,16 @@ function create_repos(scope: Construct, region_name: string, config: any): codec
       repositoryName: repo.name, 
       description: repo.desc
     });
-    repo_list.push(tekpossible_repo);
+    if (repo.type == "software"){
+      __software_repo = tekpossible_repo;
+    } else if (repo.type == "image"){
+      __image_repo = tekpossible_repo;
+
+    } else if (repo.type == "infrastructure"){
+      __infrastructure_repo = tekpossible_repo;
+    }
   });
 
-  return(repo_list);
 
   }
 
@@ -47,16 +57,14 @@ function create_repos(scope: Construct, region_name: string, config: any): codec
         temp_name = temp_repo.name;
       } 
     });
-    repo_list.forEach(function(cfn_repo){
+    repo_list.forEach(function(cfn_repo: codecommit.Repository){
       if(cfn_repo.repositoryName == temp_name)
         repo = cfn_repo;
-    });
+      });
     return repo;
   }
 
-function create_software_workflow(scope: Construct, region_name: string, config: any, repos: codecommit.Repository[]){
-  const software_repo = getRepoFromType("software", config, repos);
-  const image_repo = getRepoFromType("ami", config, repos);
+function create_software_workflow(scope: Construct, region_name: string, config: any){
   // Step 1 - Create IAM Roles needed for the Bucket and Pipeline - The CodeBuild Container will need access to codecommit as well
   // Step 2 - Create S3 Bucket for Software TAR Output
   // Step 3 - Create the Build/Lint Pipeline
@@ -64,17 +72,15 @@ function create_software_workflow(scope: Construct, region_name: string, config:
  
 }
 
-function create_image_workflow(scope: Construct, region_name: string, config: any, repos: codecommit.Repository[]){
-  const image_repo = getRepoFromType("ami", config, repos);
-  const infrastructure_repo = getRepoFromType("infrastructure", config, repos);
+function create_image_workflow(scope: Construct, region_name: string, config: any){
   // Step 1 - Create IAM Roles needed - The ImageBuilder EC2 instance will need access to s3 buckets to pull down the tar file mentioned in the software pipeline
   // Step 2 - Create the Code Pipeline and Image Pipeline - Make the image pipeline run stuff from the configs based off of the ami repo config 
   // Step 3 - Write the new ami to the config.json on the infrastructure repo
 
 }
 
-function create_infrastructure_workflow(scope: Construct, region_name: string, config: any, repos: codecommit.Repository[]){ 
-  const infrastructure_repo = getRepoFromType("infrastructure", config, repos);
+function create_infrastructure_workflow(scope: Construct, region_name: string, config: any){ 
+
   
   // Step 1 - Create IAM Roles needed - The Codepipeline role will need admin access to deploy the stack in cloudformation
   // Also create the SNS topic/sub and other prerequisites for codepipeline(s)
@@ -119,11 +125,11 @@ function create_infrastructure_workflow(scope: Construct, region_name: string, c
   });
   // Step 2 - Create codepipeline structures and the pipelines
   var infrastructure_pipelines = [] 
-  
+
   config.infrastructure_site_branches.forEach(function(branch: string) {
-    const codepipeline_s3_bucket =  new s3.Bucket(scope, config.stack_name + "-infrastructure-pipeline-storage-" + branch, {
+    const codepipeline_s3_bucket =  new s3.Bucket(scope, config.stack_name + "-infra-pipeline-storage-" + branch, {
       versioned: true, 
-      bucketName: config.stack_name.toLowerCase( ) + "-infrastructure-pipeline-storage-" + branch,
+      bucketName: config.stack_name.toLowerCase( ) + "-infra-pipeline-storage-" + branch,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true
     });
@@ -139,10 +145,9 @@ function create_infrastructure_workflow(scope: Construct, region_name: string, c
 
     const infra_pipeline_artifact_src = new codepipeline.Artifact(config.stack_name + "-Infra-PipelineArtifactSource-" + branch);
     const infra_pipeline_artifact_out = new codepipeline.Artifact(config.stack_name + "-Infra-PipelineArtifactOutput-" + branch);
-  
     // Triggers on codecommit commit to the branch specified in the loop 
     const infra_pipeline_src_action = new codepipeline_actions.CodeCommitSourceAction({
-      repository: infrastructure_repo,
+      repository: __infrastructure_repo,
       actionName: "SourceAction",
       output: infra_pipeline_artifact_src,
       branch: branch
@@ -163,19 +168,18 @@ export class DevopsStack extends cdk.Stack {
     super(scope, id, props);
 
     // Creation of repos is needed first so that the pipelines can trigger eachother
-    const repo_list = create_repos(this, config.region, config);
-
+    create_repos(this, config.region, config);
     // The following functions create the overall development workflow
     // Software Pipeline -> Image Pipeline -> Infrastructure Pipeline
 
     // // Create Software Repo and Pipeline
-    // create_software_workflow(this, config.region, config, repo_list);
+    // create_software_workflow(this, config.region, config);
 
     // // Create AMI Repo and Pipeline
-    // create_image_workflow(this, config.region, config, repo_list);
+    // create_image_workflow(this, config.region, config);
 
     // // Create Infrastructure Repo and Pipeline
-    create_infrastructure_workflow(this, config.region, config, repo_list);
+    create_infrastructure_workflow(this, config.region, config);
 
   }
 }
