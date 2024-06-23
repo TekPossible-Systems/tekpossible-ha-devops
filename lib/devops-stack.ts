@@ -17,8 +17,8 @@ function create_repos(scope: Construct, region_name: string, config: any): codec
     "desc": "Description of the repository - human readable summary",
     "type": "Type of the repo - can either be ami, software, infrastructure, or devops"
   }
-  
-  Note: devops is the only one that does not have a CI/CD Pipeline that does not manage its deployment - that is because it was simpler just to use cdk deploy since it creates the rest of the pipelines
+
+  Note: devops is the only one that does not have a CI/CD Pipeline - that is because it was simpler just to use cdk deploy since it creates the rest of the pipelines
   */
   config.repos.forEach(function(repo: any) {
     var tekpossible_repo = new codecommit.Repository(scope, config.stack_name + "-" + repo.name, {
