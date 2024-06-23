@@ -1,6 +1,11 @@
 {
     "stack_name": "TekPossible-Stratagem-DevOps",
     "region": "us-east-2",
+    "infrastructure_site_branches": [
+        "development",
+        "canary",
+        "main"
+    ],
     "repos": [
        {
             "name": "tekpossible-gem-ami",

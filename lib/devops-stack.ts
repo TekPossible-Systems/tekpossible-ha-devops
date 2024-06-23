@@ -10,7 +10,9 @@ import * as codecommit from 'aws-cdk-lib/aws-codecommit';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as sns from 'aws-cdk-lib/aws-sns';
-
+import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
+import * as codepipeline_actions from 'aws-cdk-lib/aws-codepipeline-actions';
+import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 
 function create_repos(scope: Construct, region_name: string, config: any): codecommit.Repository[] {
   var repo_list: codecommit.Repository[] = [];
@@ -75,6 +77,7 @@ function create_infrastructure_workflow(scope: Construct, region_name: string, c
   const infrastructure_repo = getRepoFromType("infrastructure", config, repos);
   
   // Step 1 - Create IAM Roles needed - The Codepipeline role will need admin access to deploy the stack in cloudformation
+  // Also create the SNS topic/sub and other prerequisites for codepipeline(s)
   const infra_codepipeline_iam_role = new iam.Role(scope, config.stack_name + '-Infra-CodePipelineRole', {
     assumedBy: new iam.CompositePrincipal(
       new iam.ServicePrincipal("ec2.amazonaws.com"),
@@ -91,17 +94,7 @@ function create_infrastructure_workflow(scope: Construct, region_name: string, c
 
   // Admin access is granted here so that CloudFormation can properly deploy the infrastructure
   infra_codepipeline_iam_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-InfraCodePipelineInfraMP1", "arn:aws:iam::aws:policy/AdministratorAccess"));
-  
-  // Step 2 - Create the S3 bucket used to get the synthesized CDK outputs
-  const codepipeline_s3_bucket =  new s3.Bucket(scope, config.stack_name + "-infrastructure-pipeline-storage", {
-    versioned: true, 
-    bucketName: config.stack_name.toLowerCase( ) + "-infrastructure-pipeline-storage",
-    removalPolicy: cdk.RemovalPolicy.DESTROY,
-    autoDeleteObjects: true
-  });
 
-  // Step 3 - Create the SNS Stuff so that approvals are required
-  // Grab email PoC for the repo - this will be where sns notifications are sent for approvals. Fail if there is not email set.
   var sns_email = "";
   config.repos.forEach(function(repo: any){
     if(repo.type == "infrastructure") {
@@ -124,7 +117,44 @@ function create_infrastructure_workflow(scope: Construct, region_name: string, c
     protocol: sns.SubscriptionProtocol.EMAIL,
     endpoint: sns_email
   });
-  // Step 4 - Create codepipeline structures
+  // Step 2 - Create codepipeline structures and the pipelines
+  var infrastructure_pipelines = [] 
+  
+  config.infrastructure_site_branches.forEach(function(branch: string) {
+    const codepipeline_s3_bucket =  new s3.Bucket(scope, config.stack_name + "-infrastructure-pipeline-storage-" + branch, {
+      versioned: true, 
+      bucketName: config.stack_name.toLowerCase( ) + "-infrastructure-pipeline-storage-" + branch,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true
+    });
+  
+    const infra_codepipeline = new codepipeline.Pipeline(scope, config.stack_name + "-Infra-Pipeline-" + branch, {
+      pipelineName: config.stack_name + "-Infra-Pipeline" + branch,
+      artifactBucket: codepipeline_s3_bucket,
+      restartExecutionOnUpdate: false,
+      role: infra_codepipeline_iam_role
+    });
+
+    infrastructure_pipelines.push(infra_codepipeline);
+
+    const infra_pipeline_artifact_src = new codepipeline.Artifact(config.stack_name + "-Infra-PipelineArtifactSource-" + branch);
+    const infra_pipeline_artifact_out = new codepipeline.Artifact(config.stack_name + "-Infra-PipelineArtifactOutput-" + branch);
+  
+    // Triggers on codecommit commit to the branch specified in the loop 
+    const infra_pipeline_src_action = new codepipeline_actions.CodeCommitSourceAction({
+      repository: infrastructure_repo,
+      actionName: "SourceAction",
+      output: infra_pipeline_artifact_src,
+      branch: branch
+    });
+  
+    const infra_pipeline_src = infra_codepipeline.addStage({
+      stageName: "Source",
+      actions: [infra_pipeline_src_action]
+    });
+  });
+
+
 
 }
 
