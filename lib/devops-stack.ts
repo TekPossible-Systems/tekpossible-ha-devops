@@ -61,7 +61,7 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
   // Step 1 - Create IAM Roles needed - The ImageBuilder EC2 instance will need access to s3 buckets to pull down the tar file mentioned in the software pipeline
   // Step 2 - Create the Code Pipeline and Image Pipeline - Make the image pipeline run stuff from the configs based off of the ami repo config 
   // Step 3 - Write the new ami to the config.json on the infrastructure repo
-  const software_repo = getRepoFromType("ami", config, repos);
+  const image_repo = getRepoFromType("ami", config, repos);
 
 }
 
@@ -70,7 +70,7 @@ function create_infrastructure_workflow(scope: Construct, region_name: string, c
   // Step 2 - Create the S3 bucket used to get the synthesized CDK outputs
   // Step 3 - Run codebuild and put the outputs on that s3 bucket
   // Step 4- Use the deploy phase as a cloudformation deploy, based on the s3 bucket contents described above. 
-  const software_repo = getRepoFromType("infrastructure", config, repos);
+  const infrastructure_repo = getRepoFromType("infrastructure", config, repos);
 
 }
 
