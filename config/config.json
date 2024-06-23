@@ -16,6 +16,11 @@
             "name": "tekpossible-gem-infrastructure",
             "desc": "TekPossible STRATAGEM Infrastructure Repository",
             "type": "infrastructure"
+        },
+        {
+            "name": "tekpossible-gem-devops-infrastructure",
+            "desc": "TekPossible STRATAGEM DevOps Infrastructure Repository",
+            "type": "devops"
         }
     ],
     "ami_source_image": "ami-078cbc4c2d057c244"
