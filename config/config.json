@@ -2,7 +2,9 @@
     "stack_name": "TekPossible-Stratagem-DevOps",
     "region": "us-east-2",
     "infrastructure_site_branches": [
-        "main"
+        "main",
+        "qa",
+        "production"
     ],
     "repos": [
        {
