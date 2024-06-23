@@ -135,7 +135,7 @@ function create_infrastructure_workflow(scope: Construct, region_name: string, c
     });
   
     const infra_codepipeline = new codepipeline.Pipeline(scope, config.stack_name + "-Infra-Pipeline-" + branch, {
-      pipelineName: config.stack_name + "-Infra-Pipeline" + branch,
+      pipelineName: config.stack_name + "-Infra-Pipeline-" + branch,
       artifactBucket: codepipeline_s3_bucket,
       restartExecutionOnUpdate: false,
       role: infra_codepipeline_iam_role
@@ -157,10 +157,62 @@ function create_infrastructure_workflow(scope: Construct, region_name: string, c
       stageName: "Source",
       actions: [infra_pipeline_src_action]
     });
+
+    const infra_pipeline_codebuild_pre = new codepipeline_actions.CodeBuildAction({
+      input: infra_pipeline_artifact_src,
+      actionName: "CodeBuild",
+      project: new codebuild.PipelineProject(scope, config.stack_name + "-codebuild-infra-pre-" + branch, {
+        environment: {
+          buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_5,
+          computeType: codebuild.ComputeType.SMALL,
+          
+        },
+        role: infra_codepipeline_iam_role,
+        buildSpec: codebuild.BuildSpec.fromSourceFilename("buildspec-pre-approval.yml")
+      }),
+      outputs: [infra_pipeline_artifact_out]
+    });
+
+    const devops_iac_pipeline_build_pre = infra_codepipeline.addStage({
+      stageName: "Build",
+      actions: [infra_pipeline_codebuild_pre]
+    });
+
+    const infra_pipeline_approval_action = new codepipeline_actions.ManualApprovalAction({
+      actionName: "DeployApproval",
+      notificationTopic: infra_codepipeline_sns_topic
+    });
+  
+    const devops_iac_pipeline_approval_stage = infra_codepipeline.addStage({
+      stageName: "DeployApproval",
+      actions: [infra_pipeline_approval_action]
+    });
+
+
+    const infra_pipeline_codebuild_post = new codepipeline_actions.CodeBuildAction({
+      input: infra_pipeline_artifact_out,
+      actionName: "CodeBuild",
+      project: new codebuild.PipelineProject(scope, config.stack_name + "-codebuild-infra-post-" + branch, {
+        environment: {
+          buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_5,
+          computeType: codebuild.ComputeType.SMALL,
+          
+        },
+        role: infra_codepipeline_iam_role,
+        buildSpec: codebuild.BuildSpec.fromSourceFilename("buildspec-post-approval.yml")
+      })
+    });
+
+    const devops_iac_pipeline_build_post = infra_codepipeline.addStage({
+      stageName: "Deploy",
+      actions: [infra_pipeline_codebuild_post]
+    });
+
+  // Pipeline branch loop end  
   });
 
 
-
+//Function End
 }
 
 export class DevopsStack extends cdk.Stack {
