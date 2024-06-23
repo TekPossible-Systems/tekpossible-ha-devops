@@ -3,24 +3,28 @@
     "region": "us-east-2",
     "repos": [
        {
-        "name": "tekpossible-gem-ami",
-        "desc": "TekPossible STRATAGEM Image Repository",
-        "type": "ami"
+            "name": "tekpossible-gem-ami",
+            "desc": "TekPossible STRATAGEM Image Repository",
+            "type": "ami",
+            "email_poc": "infrastructure-gem@tekpossible.com"
         },
         {
             "name": "tekpossible-gem-software",
             "desc": "TekPossible STRATAGEM Software Repository",
-            "type": "software"
+            "type": "software",
+            "email_poc": "software-gem@tekpossible.com"
         },
         {
             "name": "tekpossible-gem-infrastructure",
             "desc": "TekPossible STRATAGEM Infrastructure Repository",
-            "type": "infrastructure"
+            "type": "infrastructure",
+            "email_poc": "infrastructure-gem@tekpossible.com"
         },
         {
             "name": "tekpossible-gem-devops-infrastructure",
             "desc": "TekPossible STRATAGEM DevOps Infrastructure Repository",
-            "type": "devops"
+            "type": "devops",
+            "email_poc": "devops-gem@tekpossible.com"
         }
     ],
     "ami_source_image": "ami-078cbc4c2d057c244"

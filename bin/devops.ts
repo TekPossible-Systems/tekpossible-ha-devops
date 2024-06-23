@@ -9,5 +9,6 @@ import { DevopsStack } from '../lib/devops-stack';
 import config from '../config/config.json';
 
 const app = new cdk.App();
+console.log("\nDeploying DevOps Stack with the following config:\n");
 console.log(config);
-new DevopsStack(app, 'Stratagem-DevopsStack', config, {});
+new DevopsStack(app, 'TekPossible-Stratagem-Devops', config, {});
