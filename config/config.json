@@ -1,0 +1,22 @@
+{
+    "stack_name": "TekPossible-Stratagem-DevOps",
+    "region": "us-east-2",
+    "repos": [
+       {
+        "name": "tekpossible-gem-ami",
+        "desc": "TekPossible STRATAGEM Image Repository",
+        "type": "ami"
+        },
+        {
+            "name": "tekpossible-gem-software",
+            "desc": "TekPossible STRATAGEM Software Repository",
+            "type": "software"
+        },
+        {
+            "name": "tekpossible-gem-infrastructure",
+            "desc": "TekPossible STRATAGEM Infrastructure Repository",
+            "type": "infrastructure"
+        }
+    ],
+    "ami_source_image": "ami-078cbc4c2d057c244"
+}
