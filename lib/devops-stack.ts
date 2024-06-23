@@ -55,7 +55,6 @@ function create_software_workflow(scope: Construct, region_name: string, config:
   // Step 4 - Create the Deploy Pipeline (actually just the last part of the build pipeline after the bucket is outputted)
   const software_repo = getRepoFromType("software", config, repos);
   const image_repo = getRepoFromType("ami", config, repos);
-
  
 }
 
