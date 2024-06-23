@@ -54,6 +54,8 @@ function create_software_workflow(scope: Construct, region_name: string, config:
   // Step 3 - Create the Build/Lint Pipeline
   // Step 4 - Create the Deploy Pipeline (actually just the last part of the build pipeline after the bucket is outputted)
   const software_repo = getRepoFromType("software", config, repos);
+  const image_repo = getRepoFromType("ami", config, repos);
+
  
 }
 
@@ -62,6 +64,7 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
   // Step 2 - Create the Code Pipeline and Image Pipeline - Make the image pipeline run stuff from the configs based off of the ami repo config 
   // Step 3 - Write the new ami to the config.json on the infrastructure repo
   const image_repo = getRepoFromType("ami", config, repos);
+  const infrastructure_repo = getRepoFromType("infrastructure", config, repos);
 
 }
 
