@@ -14,7 +14,7 @@ import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as codepipeline_actions from 'aws-cdk-lib/aws-codepipeline-actions';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 
-
+// Globally Accessible Variables - These are the repos that all of the functions need
 var __infrastructure_repo: any;
 var __image_repo: any;
 var __software_repo: any;
@@ -46,26 +46,28 @@ function create_repos(scope: Construct, region_name: string, config: any) {
   });
 
 
-  }
-
-  
-  function getRepoFromType(desiredType: any, config: any, repo_list: codecommit.Repository[]): any {
-    var repo = null;
-    var temp_name = "";
-    config.repos.forEach(function(temp_repo: any){
-      if(temp_repo.type == desiredType) {
-        temp_name = temp_repo.name;
-      } 
-    });
-    repo_list.forEach(function(cfn_repo: codecommit.Repository){
-      if(cfn_repo.repositoryName == temp_name)
-        repo = cfn_repo;
-      });
-    return repo;
-  }
+}
 
 function create_software_workflow(scope: Construct, region_name: string, config: any){
   // Step 1 - Create IAM Roles needed for the Bucket and Pipeline - The CodeBuild Container will need access to codecommit as well
+  const software_codepipeline_iam_role = new iam.Role(scope, config.stack_name + '-SW-CodePipelineRole', {
+    assumedBy: new iam.CompositePrincipal(
+      new iam.ServicePrincipal("ec2.amazonaws.com"),
+      new iam.ServicePrincipal("codebuild.amazonaws.com"),
+      new iam.ServicePrincipal("codedeploy.amazonaws.com"), 
+      new iam.ServicePrincipal("codecommit.amazonaws.com"),
+      new iam.ServicePrincipal("cloudformation.amazonaws.com"),
+      new iam.ServicePrincipal("sns.amazonaws.com"),
+      new iam.ServicePrincipal("codepipeline.amazonaws.com"),
+      new iam.ServicePrincipal("s3.amazonaws.com") 
+    ),
+    roleName: config.stack_name + '-SW-CodePipelineRole'
+
+    });
+    software_codepipeline_iam_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-SW-CodePipelineMP1", "arn:aws:iam::aws:policy/service-role/AWSCodeStarServiceRole"));
+    software_codepipeline_iam_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-SW-CodePipelineMP2", "arn:aws:iam::aws:policy/AmazonS3FullAccess"));
+    
+
   // Step 2 - Create S3 Bucket for Software TAR Output
   // Step 3 - Create the Build/Lint Pipeline
   // Step 4 - Create the Deploy Pipeline (actually just the last part of the build pipeline after the bucket is outputted)
@@ -173,7 +175,7 @@ function create_infrastructure_workflow(scope: Construct, region_name: string, c
       outputs: [infra_pipeline_artifact_out]
     });
 
-    const devops_iac_pipeline_build_pre = infra_codepipeline.addStage({
+    const infra_pipeline_codebuild_pre_stage = infra_codepipeline.addStage({
       stageName: "Build",
       actions: [infra_pipeline_codebuild_pre]
     });
@@ -183,7 +185,7 @@ function create_infrastructure_workflow(scope: Construct, region_name: string, c
       notificationTopic: infra_codepipeline_sns_topic
     });
   
-    const devops_iac_pipeline_approval_stage = infra_codepipeline.addStage({
+    const infra_pipeline_approval_stage = infra_codepipeline.addStage({
       stageName: "DeployApproval",
       actions: [infra_pipeline_approval_action]
     });
@@ -203,7 +205,7 @@ function create_infrastructure_workflow(scope: Construct, region_name: string, c
       })
     });
 
-    const devops_iac_pipeline_build_post = infra_codepipeline.addStage({
+    const infra_pipeline_codebuild_post_stage = infra_codepipeline.addStage({
       stageName: "Deploy",
       actions: [infra_pipeline_codebuild_post]
     });
