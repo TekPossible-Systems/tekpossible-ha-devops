@@ -63,14 +63,67 @@ function create_software_workflow(scope: Construct, region_name: string, config:
     ),
     roleName: config.stack_name + '-SW-CodePipelineRole'
 
-    });
-    software_codepipeline_iam_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-SW-CodePipelineMP1", "arn:aws:iam::aws:policy/service-role/AWSCodeStarServiceRole"));
-    software_codepipeline_iam_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-SW-CodePipelineMP2", "arn:aws:iam::aws:policy/AmazonS3FullAccess"));
-    
+  });
+  
+  software_codepipeline_iam_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-SW-CodePipelineMP1", "arn:aws:iam::aws:policy/service-role/AWSCodeStarServiceRole"));
+  software_codepipeline_iam_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-SW-CodePipelineMP2", "arn:aws:iam::aws:policy/AmazonS3FullAccess"));
+  
+  // Step 2 - Create codepipeline structures and the pipelines
+  var software_pipelines = [] 
 
-  // Step 2 - Create S3 Bucket for Software TAR Output
-  // Step 3 - Create the Build/Lint Pipeline
-  // Step 4 - Create the Deploy Pipeline (actually just the last part of the build pipeline after the bucket is outputted)
+  config.infrastructure_site_branches.forEach(function(branch: string) {
+    const codepipeline_s3_bucket =  new s3.Bucket(scope, config.stack_name + "-sw-pipeline-storage-" + branch, {
+      versioned: true, 
+      bucketName: config.stack_name.toLowerCase( ) + "-sw-pipeline-storage-" + branch,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true
+    });
+  
+    const software_codepipeline = new codepipeline.Pipeline(scope, config.stack_name + "-SW-Pipeline-" + branch, {
+      pipelineName: config.stack_name + "-SW-Pipeline-" + branch,
+      artifactBucket: codepipeline_s3_bucket,
+      restartExecutionOnUpdate: false,
+      role: software_codepipeline_iam_role
+    });
+
+    software_pipelines.push(software_codepipeline);
+
+    const software_pipeline_artifact_src = new codepipeline.Artifact(config.stack_name + "-SW-PipelineArtifactSource-" + branch);
+    const software_pipeline_artifact_out = new codepipeline.Artifact(config.stack_name + "-SW-PipelineArtifactOutput-" + branch);
+
+    // Triggers on codecommit commit to the branch specified in the loop 
+    const software_pipeline_src_action = new codepipeline_actions.CodeCommitSourceAction({
+      repository: __software_repo,
+      actionName: "SourceAction",
+      output: software_pipeline_artifact_src,
+      branch: branch
+    });
+  
+    const infra_pipeline_src = software_codepipeline.addStage({
+      stageName: "Source",
+      actions: [software_pipeline_src_action]
+    });
+
+    const software_pipeline_codebuild_pre = new codepipeline_actions.CodeBuildAction({ // Codebuild will build the software code, make it into a tar, and then commit to the image repo
+      input: software_pipeline_artifact_src,
+      actionName: "CodeBuild",
+      project: new codebuild.PipelineProject(scope, config.stack_name + "-codebuild-sw-pre-" + branch, {
+        environment: {
+          buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_5,
+          computeType: codebuild.ComputeType.SMALL,
+          
+        },
+        role: software_codepipeline_iam_role
+      }),
+      outputs: [software_pipeline_artifact_out]
+    });
+
+    const software_pipeline_codebuild_pre_stage = software_codepipeline.addStage({
+      stageName: "Build",
+      actions: [software_pipeline_codebuild_pre]
+    });
+
+  });
  
 }
 
