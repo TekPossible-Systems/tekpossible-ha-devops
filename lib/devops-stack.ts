@@ -13,7 +13,7 @@ import * as sns from 'aws-cdk-lib/aws-sns';
 import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as codepipeline_actions from 'aws-cdk-lib/aws-codepipeline-actions';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
-
+import * as imagebuilder from 'aws-cdk-lib/aws-imagebuilder';
 // Globally Accessible Variables - These are the repos that all of the functions need
 var __infrastructure_repo: any;
 var __image_repo: any;
@@ -104,7 +104,7 @@ function create_software_workflow(scope: Construct, region_name: string, config:
       actions: [software_pipeline_src_action]
     });
 
-    const software_pipeline_codebuild_pre = new codepipeline_actions.CodeBuildAction({ // Codebuild will build the software code, make it into a tar, and then commit to the image repo
+    const software_pipeline_codebuild_pre = new codepipeline_actions.CodeBuildAction({ // Codebuild will build the software code, make it into a tar, and then commit the git tag/tar file the image repo
       input: software_pipeline_artifact_src,
       actionName: "CodeBuild",
       project: new codebuild.PipelineProject(scope, config.stack_name + "-codebuild-sw-pre-" + branch, {
@@ -129,9 +129,62 @@ function create_software_workflow(scope: Construct, region_name: string, config:
 
 function create_image_workflow(scope: Construct, region_name: string, config: any){
   // Step 1 - Create IAM Roles needed - The ImageBuilder EC2 instance will need access to s3 buckets to pull down the tar file mentioned in the software pipeline
-  // Step 2 - Create the Code Pipeline and Image Pipeline - Make the image pipeline run stuff from the configs based off of the ami repo config 
-  // Step 3 - Write the new ami to the config.json on the infrastructure repo
 
+  const ec2_imagebuilder_role = new iam.Role(scope, config.stack_name + '-EC2ImageBuilderRole', {
+    assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+    description: "EC2 Image Builder role for CDK Devops Stack"
+  });
+
+  ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName("EC2InstanceProfileForImageBuilder"));
+  ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName("EC2InstanceProfileForImageBuilderECRContainerBuilds"));
+  ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"));
+  ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-MP1", "arn:aws:iam::aws:policy/AmazonS3FullAccess"));
+  
+  // Step 2 - Create the Code Pipeline and Image Pipeline - Make the image pipeline run stuff from the configs based off of the ami repo config
+  // Create the precursor configs
+  const instance_profile = new iam.CfnInstanceProfile(scope, "", {
+      instanceProfileName: config.stack_name + "IAM-InstanceProfileName",
+      roles: [ec2_imagebuilder_role.roleName]
+  });
+
+  const infrastucture_config = new imagebuilder.CfnInfrastructureConfiguration(scope, config.stack_name + "-AMIInfraConfig", {
+    name: config.stack_name + "-AMIInfraConfig",
+    instanceProfileName: ""
+  });
+
+  infrastucture_config.node.addDependency(instance_profile);
+  
+  // TODO: Figure out the components that should be here...
+  // const component = new imagebuilder.CfnComponent(scope, config.stack_name + "-Component1", {
+
+  // });
+
+  const componentConfigurationProperty: imagebuilder.CfnContainerRecipe.ComponentConfigurationProperty = {
+    componentArn: 'componentArn',
+    parameters: [{
+      name: 'name',
+      value: ['value'],
+    }],
+  };
+  const image_recipe = new imagebuilder.CfnImageRecipe(scope, config.stack_name + "-ImageRecipe", {
+    name: config.stack_name + "-ImageRecipe",
+    parentImage: config.ami_source_image,
+    components: [componentConfigurationProperty],
+    version: "v1.0.1"
+  });
+  // create the image pipeline
+  const image_pipeline = new imagebuilder.CfnImagePipeline(scope, config.stack_name + "-ImagePipeline", {
+    name: config.stack_name + "-ImagePipeline",
+    infrastructureConfigurationArn: infrastucture_config.attrArn,
+    // imageRecipeArn: "",
+    // distributionConfigurationArn: "",
+    executionRole: ec2_imagebuilder_role.roleArn
+
+  });
+  image_pipeline.node.addDependency(infrastucture_config);
+
+  // Step 3 - Write the new ami to the config.json on the infrastructure repo
+  
 }
 
 function create_infrastructure_workflow(scope: Construct, region_name: string, config: any){ 
@@ -154,7 +207,7 @@ function create_infrastructure_workflow(scope: Construct, region_name: string, c
     });
 
   // Admin access is granted here so that CloudFormation can properly deploy the infrastructure
-  infra_codepipeline_iam_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-InfraCodePipelineInfraMP1", "arn:aws:iam::aws:policy/AdministratorAccess"));
+  infra_codepipeline_iam_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-InfraCodePipelineMP1", "arn:aws:iam::aws:policy/AdministratorAccess"));
 
   var sns_email = "";
   config.repos.forEach(function(repo: any){
