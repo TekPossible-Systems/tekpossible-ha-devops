@@ -19,6 +19,19 @@ var __infrastructure_repo: any;
 var __image_repo: any;
 var __software_repo: any;
 
+/* 
+General Gameplan for DevOps portion of TekPossible HA Project:
+The whole point of this devops repo is to create a workflow in which you can have preconfigured os images software releases, and overall infrastructure configs. 
+In order to do this, some considerations need to be made. There needs to be some seperate code repos for this to work. \
+1. We need a devops repo that will be the "one ring to rule them all" so to speak. 
+2. We need a software repo that will be used by the software developers in order to write and deploy software builds onto our premade infrastructure. 
+The hope is to pull the software into a custom AMI, so I will need to have some sort of TAR file premade (hopefully output of the codebuild in the software repo's ci/cd pipeline). 
+The end result of this will be committing the software version ID and an s3 bucket location to the AMI repo.
+3. Some sort of method to spin up a custom, security approved AMI that is automatically updated before being deployed. The best way to manage an infrastructure is to do some sort of golden image setup, so my plan is to use EC2 image builder. 
+I will need to grab the specified software build and install it into the AMI before deeming it as ready. For the security part of this, I also plan on applying the DISA STIG to the images. The end result of this repo will be an AMI and the AMI id will be commited to the below infrastructure repo.
+4. We need a infrastructure repo that will be used whenever you want a major infrastucture update. Something like adding a new host into the templated environments. It is less likely to directly update this environment, and instead to update the repos mentioned above.
+*/
+
 function create_repos(scope: Construct, region_name: string, config: any) {
   /*
   Format for repo: 
