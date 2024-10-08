@@ -156,47 +156,54 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
   // Step 2 - Create the Code Pipeline and Image Pipeline - Make the image pipeline run stuff from the configs based off of the ami repo config
   // Create the precursor configs
   const instance_profile = new iam.CfnInstanceProfile(scope, "", {
-      instanceProfileName: config.stack_name + "IAM-InstanceProfileName",
+      instanceProfileName: config.stack_name + "IAM-EC2IB-InstanceProfile",
       roles: [ec2_imagebuilder_role.roleName]
   });
 
   const infrastucture_config = new imagebuilder.CfnInfrastructureConfiguration(scope, config.stack_name + "-AMIInfraConfig", {
-    name: config.stack_name + "-AMIInfraConfig",
-    instanceProfileName: ""
+    name: config.stack_name + config.stack_name + "IAM-EC2IB-InstanceProfile",
+    instanceProfileName: String(instance_profile.instanceProfileName),
+    instanceTypes: [
+      "t2.micro"
+    ]
   });
 
   infrastucture_config.node.addDependency(instance_profile);
-  
-  // TODO: Figure out the components that should be here...
-  // const component = new imagebuilder.CfnComponent(scope, config.stack_name + "-Component1", {
 
-  // });
+  // TODO: Define a static component that pulls in data from the image repo
+  var component_file_data = readFileSync("./assets/ec2-imagebuilder-component.yaml", "utf-8");
+
+  // TODO: Figure out the components that should be here...
+  const imagebuilder_component = new imagebuilder.CfnComponent(scope, config.stack_name + "-PrimaryComponent", {
+    name: "RHEL-Config",
+    version: "v1.0.1",
+    platform: "Linux",
+    data: component_file_data
+  });
 
   const componentConfigurationProperty: imagebuilder.CfnContainerRecipe.ComponentConfigurationProperty = {
-    componentArn: 'componentArn',
-    parameters: [{
-      name: 'name',
-      value: ['value'],
-    }],
+    componentArn: imagebuilder_component.attrArn,
   };
+
   const image_recipe = new imagebuilder.CfnImageRecipe(scope, config.stack_name + "-ImageRecipe", {
     name: config.stack_name + "-ImageRecipe",
     parentImage: config.ami_source_image,
     components: [componentConfigurationProperty],
-    version: "v1.0.1"
+    version: "1.0.0"
   });
+
   // create the image pipeline
   const image_pipeline = new imagebuilder.CfnImagePipeline(scope, config.stack_name + "-ImagePipeline", {
     name: config.stack_name + "-ImagePipeline",
     infrastructureConfigurationArn: infrastucture_config.attrArn,
-    // imageRecipeArn: "",
+    imageRecipeArn: image_recipe.attrArn,
     // distributionConfigurationArn: "",
     executionRole: ec2_imagebuilder_role.roleArn
 
   });
   image_pipeline.node.addDependency(infrastucture_config);
-
-  // Step 3 - Write the new ami to the config.json on the infrastructure repo
+  // Step 3 - Create the codepipeline the triggers the above pipeline. Not sure how we will determine when the ec2 imagebuilder image is ready but we will need to both trigger and determine the results of the pipeline via awscli
+  // Step 4 - Write the new ami to the config.json on the infrastructure repo
   
 }
 
