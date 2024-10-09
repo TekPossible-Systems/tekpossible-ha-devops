@@ -1,1 +1,19 @@
-# TODO: Add the component file in here. I can make an easy template, but I want to think about the repo stuff specifically since AWS I think froze the creation of new codecommit repos.
+name: RHEL9Setup
+description: Complete Custom Setup of RHEL 9
+schemaVersion: 1.0
+
+phases:
+  - name: build
+    steps:
+      - name: RHEL9Setup
+        action: ExecuteBash
+        inputs:
+          commands:
+            - dnf update -y
+            - dnf install -y ansible-core unzip git python3-pip
+            - pip3 install git-remote-codecommit
+            - mkdir /tmp/git-repo
+            - cd /tmp/git-repo
+            - git clone codecommit::AWS_REGION://IMAGE_REPO_NAME
+            - cd IMAGE_REPO_NAME
+            - bash ./setup_image.sh
