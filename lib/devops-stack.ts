@@ -172,6 +172,8 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
 
   // TODO: Define a static component that pulls in data from the image repo
   var component_file_data = readFileSync("./assets/ec2-imagebuilder-component.yaml", "utf-8");
+  component_file_data.replace("<<AWS_REGION>>", config.region);
+  component_file_data.replace("<<IMAGE_REPO_NAME>>", __software_repo.repositoryName);
 
   // TODO: Figure out the components that should be here...
   const imagebuilder_component = new imagebuilder.CfnComponent(scope, config.stack_name + "-PrimaryComponent", {

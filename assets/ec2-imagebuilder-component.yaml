@@ -12,8 +12,8 @@ phases:
             - dnf update -y
             - dnf install -y ansible-core unzip git python3-pip
             - pip3 install git-remote-codecommit
-            - mkdir /tmp/git-repo
-            - cd /tmp/git-repo
-            - git clone codecommit::AWS_REGION://IMAGE_REPO_NAME
-            - cd IMAGE_REPO_NAME
+            - mkdir /staging
+            - cd /staging/git-repo
+            - git clone codecommit::<<AWS_REGION>>://<<IMAGE_REPO_NAME>>
+            - cd <<IMAGE_REPO_NAME>>
             - bash ./setup_image.sh
