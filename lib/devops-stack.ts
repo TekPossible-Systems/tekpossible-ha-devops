@@ -144,7 +144,6 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
   // Step 1 - Create IAM Roles needed - The ImageBuilder EC2 instance will need access to s3 buckets to pull down the tar file mentioned in the software pipeline
 
   const ec2_imagebuilder_role = new iam.Role(scope, config.stack_name + '-EC2ImageBuilderRole', {
-    // assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
     assumedBy: new iam.CompositePrincipal(
       new iam.ServicePrincipal("ec2.amazonaws.com"),
       new iam.ServicePrincipal("codecommit.amazonaws.com"),
@@ -159,7 +158,27 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
   ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"));
   ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-MP1", "arn:aws:iam::aws:policy/AmazonS3FullAccess"));
   ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-MP2", "arn:aws:iam::aws:policy/service-role/AWSCodeStarServiceRole"));
-  // Step 2 - Create the Code Pipeline and Image Pipeline - Make the image pipeline run stuff from the configs based off of the ami repo config
+
+  const image_codepipeline_role = new iam.Role(scope, config.stack_name + '-AMI-CodePipelineRole', {
+    assumedBy: new iam.CompositePrincipal(
+      new iam.ServicePrincipal("ec2.amazonaws.com"),
+      new iam.ServicePrincipal("codebuild.amazonaws.com"),
+      new iam.ServicePrincipal("codedeploy.amazonaws.com"), 
+      new iam.ServicePrincipal("codecommit.amazonaws.com"),
+      new iam.ServicePrincipal("cloudformation.amazonaws.com"),
+      new iam.ServicePrincipal("sns.amazonaws.com"),
+      new iam.ServicePrincipal("codepipeline.amazonaws.com"),
+      new iam.ServicePrincipal("s3.amazonaws.com") 
+    ),
+    roleName: config.stack_name + '-SW-CodePipelineRole'
+
+  });
+  
+  image_codepipeline_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-CPMP1", "arn:aws:iam::aws:policy/service-role/AWSCodeStarServiceRole"));
+  image_codepipeline_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-CPMP2", "arn:aws:iam::aws:policy/AmazonS3FullAccess"));
+  image_codepipeline_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-CPMP3", "arn:aws:iam::aws:policy/aws-service-role/AWSServiceRoleForImageBuilder"));
+
+  // Step 2 - Create the Image Pipeline - Make the image pipeline run stuff from the configs based off of the ami repo config
   // Create the precursor configs
   const instance_profile = new iam.CfnInstanceProfile(scope, config.stack_name + "-AMIDevopsInstanceProfile", {
       instanceProfileName: config.stack_name + "IAM-EC2IB-InstanceProfile",
@@ -176,12 +195,10 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
 
   infrastucture_config.node.addDependency(instance_profile);
 
-  // TODO: Define a static component that pulls in data from the image repo
   var component_file_data = readFileSync("./assets/ec2-imagebuilder-component.yaml", "utf-8");
   component_file_data.replace("<<AWS_REGION>>", config.region);
   component_file_data.replace("<<IMAGE_REPO_NAME>>", __software_repo.repositoryName);
 
-  // TODO: Figure out the components that should be here...
   const imagebuilder_component = new imagebuilder.CfnComponent(scope, config.stack_name + "-PrimaryComponent", {
     name: "RHEL-Config",
     version: "v1.0.1",
@@ -210,9 +227,64 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
 
   });
   image_pipeline.node.addDependency(infrastucture_config);
-  // Step 3 - Create the codepipeline the triggers the above pipeline. Not sure how we will determine when the ec2 imagebuilder image is ready but we will need to both trigger and determine the results of the pipeline via awscli
-  // Step 4 - Write the new ami to the config.json on the infrastructure repo
+
+  // Step 3 - Create the codepipeline the triggers the above pipeline. Not sure how we will determine when the ec2 imagebuilder image is ready but we will need to both trigger and determine the results of the pipeline via awscli (so therefore I will use codebuild to do that)
+  var image_pipelines = [];
+
+  config.infrastructure_site_branches.forEach(function(branch: string) {
+    const codepipeline_s3_bucket =  new s3.Bucket(scope, config.stack_name + "-ami-pipeline-storage-" + branch, {
+      versioned: true, 
+      bucketName: config.stack_name.toLowerCase( ) + "-ami-pipeline-storage-" + branch,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true
+    });
   
+    const image_codepipeline = new codepipeline.Pipeline(scope, config.stack_name + "-AMI-Pipeline-" + branch, {
+      pipelineName: config.stack_name + "-AMI-Pipeline-" + branch,
+      artifactBucket: codepipeline_s3_bucket,
+      restartExecutionOnUpdate: false,
+      role: image_codepipeline_role
+    });
+
+    image_pipelines.push(image_codepipeline
+    );
+
+    const image_codepipeline_artifact_src = new codepipeline.Artifact(config.stack_name + "-AMI-PipelineArtifactSource-" + branch);
+    const image_codepipeline_artifact_out = new codepipeline.Artifact(config.stack_name + "-AMI-PipelineArtifactOutput-" + branch);
+
+    // Triggers on codecommit commit to the branch specified in the loop 
+    const software_pipeline_src_action = new codepipeline_actions.CodeCommitSourceAction({
+      repository: __software_repo,
+      actionName: "SourceAction",
+      output: image_codepipeline_artifact_src,
+      branch: branch
+    });
+  
+    const infra_pipeline_src = image_codepipeline.addStage({
+      stageName: "Source",
+      actions: [software_pipeline_src_action]
+    });
+
+    const image_codepipline_codebuild_pre = new codepipeline_actions.CodeBuildAction({ // Codebuild will build the software code, make it into a tar, and then commit the git tag/tar file the image repo
+      input: image_codepipeline_artifact_src,
+      actionName: "CodeBuild",
+      project: new codebuild.PipelineProject(scope, config.stack_name + "-codebuild-ami-pre-" + branch, {
+        environment: {
+          buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_5,
+          computeType: codebuild.ComputeType.SMALL,
+          
+        },
+        role: image_codepipeline_role
+      }),
+      outputs: [image_codepipeline_artifact_out]
+    });
+
+    const software_pipeline_codebuild_pre_stage = image_codepipeline.addStage({
+      stageName: "Build",
+      actions: [image_codepipline_codebuild_pre]
+    });
+
+  });
 }
 
 function create_infrastructure_workflow(scope: Construct, region_name: string, config: any){ 
