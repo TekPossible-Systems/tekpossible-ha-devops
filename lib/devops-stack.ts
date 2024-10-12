@@ -144,7 +144,13 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
   // Step 1 - Create IAM Roles needed - The ImageBuilder EC2 instance will need access to s3 buckets to pull down the tar file mentioned in the software pipeline
 
   const ec2_imagebuilder_role = new iam.Role(scope, config.stack_name + '-EC2ImageBuilderRole', {
-    assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+    // assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+    assumedBy: new iam.CompositePrincipal(
+      new iam.ServicePrincipal("ec2.amazonaws.com"),
+      new iam.ServicePrincipal("codecommit.amazonaws.com"),
+      new iam.ServicePrincipal("codepipeline.amazonaws.com"),
+      new iam.ServicePrincipal("s3.amazonaws.com") 
+    ),
     description: "EC2 Image Builder role for CDK Devops Stack"
   });
 
@@ -152,10 +158,10 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
   ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName("EC2InstanceProfileForImageBuilderECRContainerBuilds"));
   ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"));
   ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-MP1", "arn:aws:iam::aws:policy/AmazonS3FullAccess"));
-  
+  ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-MP2", "arn:aws:iam::aws:policy/service-role/AWSCodeStarServiceRole"));
   // Step 2 - Create the Code Pipeline and Image Pipeline - Make the image pipeline run stuff from the configs based off of the ami repo config
   // Create the precursor configs
-  const instance_profile = new iam.CfnInstanceProfile(scope, "", {
+  const instance_profile = new iam.CfnInstanceProfile(scope, config.stack_name + "-AMIDevopsInstanceProfile", {
       instanceProfileName: config.stack_name + "IAM-EC2IB-InstanceProfile",
       roles: [ec2_imagebuilder_role.roleName]
   });
@@ -354,11 +360,10 @@ export class DevopsStack extends cdk.Stack {
     // The following functions create the overall development workflow
     // Software Pipeline -> Image Pipeline -> Infrastructure Pipeline
 
-    // // Create Software Repo and Pipeline
-    // create_software_workflow(this, config.region, config);
+    create_software_workflow(this, config.region, config);
 
     // // Create AMI Repo and Pipeline
-    // create_image_workflow(this, config.region, config);
+    create_image_workflow(this, config.region, config);
 
     // // Create Infrastructure Repo and Pipeline
     create_infrastructure_workflow(this, config.region, config);
