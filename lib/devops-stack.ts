@@ -14,10 +14,15 @@ import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as codepipeline_actions from 'aws-cdk-lib/aws-codepipeline-actions';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as imagebuilder from 'aws-cdk-lib/aws-imagebuilder';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
+
 // Globally Accessible Variables - These are the repos that all of the functions need
 var __infrastructure_repo: any;
 var __image_repo: any;
 var __software_repo: any;
+var __transition_s3_bucket: any;
+var __transition_s3_bucket_parameter: any;
+var ssm_repo_parameters = [];
 
 /* 
 General Gameplan for DevOps portion of TekPossible HA Project:
@@ -31,6 +36,21 @@ The end result of this will be committing the software version ID and an s3 buck
 I will need to grab the specified software build and install it into the AMI before deeming it as ready. For the security part of this, I also plan on applying the DISA STIG to the images. The end result of this repo will be an AMI and the AMI id will be commited to the below infrastructure repo.
 4. We need a infrastructure repo that will be used whenever you want a major infrastucture update. Something like adding a new host into the templated environments. It is less likely to directly update this environment, and instead to update the repos mentioned above.
 */
+
+function create_s3_transition_bucket(scope: Construct, region_name: string, config: any){
+  __transition_s3_bucket = new s3.Bucket(scope, config.stack_name + "AWS-S3-Transition-Bucket", {
+    bucketName: config.stack_base_name.toLowerCase() + "-s3-bucket",
+    removalPolicy: cdk.RemovalPolicy.DESTROY,
+    autoDeleteObjects: true,
+  });
+  
+  __transition_s3_bucket_parameter = new ssm.StringParameter(scope, config.stack_name + '-AWS-S3-Transition-Parameter', 
+  {
+    parameterName:  config.stack_base_name.toLowerCase() + '-s3-bucket',
+    stringValue: __transition_s3_bucket.bucketName
+  });
+
+}
 
 function create_repos(scope: Construct, region_name: string, config: any) {
   /*
@@ -427,17 +447,20 @@ export class DevopsStack extends cdk.Stack {
   constructor(scope: Construct, id: string, config: any, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Creation of repos is needed first so that the pipelines can trigger eachother
+  //   // // Creation of repos is needed first so that the pipelines can trigger eachother
     create_repos(this, config.region, config);
-    // The following functions create the overall development workflow
-    // Software Pipeline -> Image Pipeline -> Infrastructure Pipeline
 
+  //   // // Creation of transitional s3 bucket to link the pipelines
+    create_s3_transition_bucket(this, config.region, config);
+
+  //   // // The following functions create the overall development workflow
+  //   // // Software Pipeline -> Image Pipeline -> Infrastructure Pipeline
     create_software_workflow(this, config.region, config);
 
-    // // Create AMI Repo and Pipeline
+  //   // // // Create AMI Repo and Pipeline
     create_image_workflow(this, config.region, config);
 
-    // // Create Infrastructure Repo and Pipeline
+  //   // // // Create Infrastructure Repo and Pipeline
     create_infrastructure_workflow(this, config.region, config);
 
   }
