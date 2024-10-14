@@ -273,7 +273,7 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
     const image_codepipeline_artifact_out = new codepipeline.Artifact(config.stack_name + "-AMI-PipelineArtifactOutput-" + branch);
 
     // Triggers on codecommit commit to the branch specified in the loop 
-    const software_pipeline_src_action = new codepipeline_actions.CodeCommitSourceAction({
+    const image_pipeline_src_action = new codepipeline_actions.CodeCommitSourceAction({
       repository: __software_repo,
       actionName: "SourceAction",
       output: image_codepipeline_artifact_src,
@@ -282,7 +282,7 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
   
     const infra_pipeline_src = image_codepipeline.addStage({
       stageName: "Source",
-      actions: [software_pipeline_src_action]
+      actions: [image_pipeline_src_action]
     });
 
     const image_codepipline_codebuild_pre = new codepipeline_actions.CodeBuildAction({ // Codebuild will build the software code, make it into a tar, and then commit the git tag/tar file the image repo
@@ -447,20 +447,20 @@ export class DevopsStack extends cdk.Stack {
   constructor(scope: Construct, id: string, config: any, props?: cdk.StackProps) {
     super(scope, id, props);
 
-  //   // // Creation of repos is needed first so that the pipelines can trigger eachother
+  // Creation of repos is needed first so that the pipelines can trigger eachother
     create_repos(this, config.region, config);
 
-  //   // // Creation of transitional s3 bucket to link the pipelines
+  // Creation of transitional s3 bucket to link the pipelines
     create_s3_transition_bucket(this, config.region, config);
 
-  //   // // The following functions create the overall development workflow
-  //   // // Software Pipeline -> Image Pipeline -> Infrastructure Pipeline
+  // The following functions create the overall development workflow
+  // Software Pipeline -> Image Pipeline -> Infrastructure Pipeline
     create_software_workflow(this, config.region, config);
 
-  //   // // // Create AMI Repo and Pipeline
+  // Create AMI Repo and Pipeline
     create_image_workflow(this, config.region, config);
 
-  //   // // // Create Infrastructure Repo and Pipeline
+  // Create Infrastructure Repo and Pipeline
     create_infrastructure_workflow(this, config.region, config);
 
   }
