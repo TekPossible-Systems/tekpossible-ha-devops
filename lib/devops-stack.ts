@@ -272,7 +272,7 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
   image_pipeline.node.addDependency(infrastucture_config);
 
   __image_pipeline_arn_parameter = new ssm.StringParameter(scope, config.stack_name + "-ImageBuilderArn-Parameter", {
-      parameterName: config.stack_base_name.toLowerCase() + 'imagebuilder-arn',
+      parameterName: config.stack_base_name.toLowerCase() + '-imagebuilder-arn',
       stringValue: image_pipeline.attrArn
   });
 
