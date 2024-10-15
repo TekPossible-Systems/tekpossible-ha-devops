@@ -23,7 +23,7 @@ var __software_repo: any;
 var __transition_s3_bucket: any;
 var __transition_s3_bucket_parameter: any;
 var ssm_repo_parameters = [];
-
+var __image_pipeline_arn_parameter: any;
 /* 
 General Gameplan for DevOps portion of TekPossible HA Project:
 The whole point of this devops repo is to create a workflow in which you can have preconfigured os images software releases, and overall infrastructure configs. 
@@ -70,11 +70,31 @@ function create_repos(scope: Construct, region_name: string, config: any) {
     });
     if (repo.type == "software"){
       __software_repo = tekpossible_repo;
+      ssm_repo_parameters.push([new ssm.StringParameter(scope, config.stack_name + '-AWS-REPO-Software', 
+        {
+          parameterName:  config.stack_base_name.toLowerCase() + '-software-repo',
+          stringValue: __software_repo.repositoryCloneUrlGrc
+        })
+      ]);
+
     } else if (repo.type == "image"){
       __image_repo = tekpossible_repo;
+      ssm_repo_parameters.push([new ssm.StringParameter(scope, config.stack_name + '-AWS-REPO-Image', 
+        {
+          parameterName:  config.stack_base_name.toLowerCase() + '-image-repo',
+          stringValue: __image_repo.repositoryCloneUrlGrc
+        })
+      ]);
 
     } else if (repo.type == "infrastructure"){
       __infrastructure_repo = tekpossible_repo;
+      ssm_repo_parameters.push([new ssm.StringParameter(scope, config.stack_name + '-AWS-REPO-Infrastructure', 
+        {
+          parameterName:  config.stack_base_name.toLowerCase() + '-infrastructure-repo',
+          stringValue: __infrastructure_repo.repositoryCloneUrlGrc
+        })
+      ]);
+
     }
   });
 
@@ -250,6 +270,11 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
 
   });
   image_pipeline.node.addDependency(infrastucture_config);
+
+  __image_pipeline_arn_parameter = new ssm.StringParameter(scope, config.stack_name + "-ImageBuilderArn-Parameter", {
+      parameterName: config.stack_base_name.toLowerCase() + 'imagebuilder-arn',
+      stringValue: image_pipeline.attrArn
+  });
 
   // Step 3 - Create the codepipeline the triggers the above pipeline. Not sure how we will determine when the ec2 imagebuilder image is ready but we will need to both trigger and determine the results of the pipeline via awscli (so therefore I will use codebuild to do that)
   var image_pipelines = [];
