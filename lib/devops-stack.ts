@@ -199,9 +199,7 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
   ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName("EC2InstanceProfileForImageBuilder"));
   ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName("EC2InstanceProfileForImageBuilderECRContainerBuilds"));
   ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"));
-  ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-MP1", "arn:aws:iam::aws:policy/AmazonS3FullAccess"));
-  ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-MP2", "arn:aws:iam::aws:policy/service-role/AWSCodeStarServiceRole"));
-  ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-MP3", "arn:aws:iam::aws:policy/AWSCodeCommitFullAccess"));
+  ec2_imagebuilder_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-MP1", "arn:aws:iam::aws:policy/AdministratorAccess"));
 
   const image_codepipeline_role = new iam.Role(scope, config.stack_name + '-AMI-CodePipelineRole', {
     assumedBy: new iam.CompositePrincipal(
