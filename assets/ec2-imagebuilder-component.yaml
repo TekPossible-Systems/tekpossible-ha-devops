@@ -10,10 +10,15 @@ phases:
         inputs:
           commands:
             - dnf update -y
-            - dnf install -y ansible-core unzip git python3-pip
+            - sudo dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+            - dnf install -y ansible-core unzip git python3-pip awscli
             - pip3 install git-remote-codecommit
+            - git config --global credential.helper '!aws codecommit credential-helper $@'
+            - git config --global credential.UseHttpPath true
             - mkdir /staging
             - cd /staging/git-repo
             - git clone $(aws ssm get-parameter --name $CDK_STACK_BASE_NAME_LOWER-image-repo --query 'Parameter.Value' | sed 's/"//g')
+            - chown -R $(whoami) ./*
+            - chmod 700 -R ./*
             - cd ./*ami*
             - bash ./setup_image.sh
