@@ -189,7 +189,9 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
       new iam.ServicePrincipal("ec2.amazonaws.com"),
       new iam.ServicePrincipal("codecommit.amazonaws.com"),
       new iam.ServicePrincipal("codepipeline.amazonaws.com"),
-      new iam.ServicePrincipal("s3.amazonaws.com") 
+      new iam.ServicePrincipal("s3.amazonaws.com"),
+      new iam.ServicePrincipal("imagebuilder.amazonaws.com")
+
     ),
     description: "EC2 Image Builder role for CDK Devops Stack"
   });
@@ -210,7 +212,8 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
       new iam.ServicePrincipal("cloudformation.amazonaws.com"),
       new iam.ServicePrincipal("sns.amazonaws.com"),
       new iam.ServicePrincipal("codepipeline.amazonaws.com"),
-      new iam.ServicePrincipal("s3.amazonaws.com") 
+      new iam.ServicePrincipal("s3.amazonaws.com"),
+      new iam.ServicePrincipal("imagebuilder.amazonaws.com")
     ),
     roleName: config.stack_name + '-Image-CodePipelineRole'
 
