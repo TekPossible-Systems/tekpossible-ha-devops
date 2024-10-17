@@ -77,7 +77,7 @@ function create_repos(scope: Construct, region_name: string, config: any) {
         })
       ]);
 
-    } else if (repo.type == "image"){
+    } else if (repo.type == "ami"){
       __image_repo = tekpossible_repo;
       ssm_repo_parameters.push([new ssm.StringParameter(scope, config.stack_name + '-AWS-REPO-Image', 
         {
