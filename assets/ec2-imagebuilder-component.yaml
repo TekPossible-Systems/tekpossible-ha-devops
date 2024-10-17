@@ -9,13 +9,13 @@ phases:
         action: ExecuteBash
         inputs:
           commands:
-            - dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+            - dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm unzip
             - dnf clean all
             - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /root/awscliv2.zip
             - cd /root
             - unzip awscliv2.zip
-            -  ./aws/install
-            - dnf install -y ansible-core unzip git python3-pip
+            - ./aws/install
+            - dnf install -y ansible-core git python3-pip
             - dnf update -y
             - pip3 install git-remote-codecommit
             - git config --global credential.helper '!aws codecommit credential-helper $@'
