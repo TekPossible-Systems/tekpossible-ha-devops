@@ -9,10 +9,10 @@ phases:
         action: ExecuteBash
         inputs:
           commands:
-            - dnf update -y
-            - sudo dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+            - dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
             - dnf clean all
             - dnf install -y ansible-core unzip git python3-pip awscli
+            - dnf update -y
             - pip3 install git-remote-codecommit
             - git config --global credential.helper '!aws codecommit credential-helper $@'
             - git config --global credential.UseHttpPath true
