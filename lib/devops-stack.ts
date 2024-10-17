@@ -218,7 +218,7 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
   
   image_codepipeline_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-CPMP1", "arn:aws:iam::aws:policy/service-role/AWSCodeStarServiceRole"));
   image_codepipeline_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-CPMP2", "arn:aws:iam::aws:policy/AmazonS3FullAccess"));
-  image_codepipeline_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-CPMP3", "arn:aws:iam::aws:policy/aws-service-role/AWSServiceRoleForImageBuilder"));
+  image_codepipeline_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-CPMP3", "arn:aws:iam::aws:policy/AWSImageBuilderFullAccess"));
   image_codepipeline_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-CPMP4", "arn:aws:iam::aws:policy/AWSCodeCommitFullAccess"));
 
   // Step 2 - Create the Image Pipeline - Make the image pipeline run stuff from the configs based off of the ami repo config
