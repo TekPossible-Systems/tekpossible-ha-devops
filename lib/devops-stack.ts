@@ -212,7 +212,7 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
       new iam.ServicePrincipal("codepipeline.amazonaws.com"),
       new iam.ServicePrincipal("s3.amazonaws.com") 
     ),
-    roleName: config.stack_name + '-SW-CodePipelineRole'
+    roleName: config.stack_name + '-Image-CodePipelineRole'
 
   });
   
@@ -244,7 +244,7 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
 
   const imagebuilder_component = new imagebuilder.CfnComponent(scope, config.stack_name + "-PrimaryComponent", {
     name: "RHEL-Config",
-    version: "v1.0.1",
+    version: "1.0.1",
     platform: "Linux",
     data: component_file_data
   });
