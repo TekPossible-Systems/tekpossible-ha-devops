@@ -10,7 +10,7 @@ phases:
         inputs:
           commands:
             - dnf update -y
-            - sudo dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+            - sudo dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
             - dnf clean all
             - dnf install -y ansible-core unzip git python3-pip awscli
             - pip3 install git-remote-codecommit
