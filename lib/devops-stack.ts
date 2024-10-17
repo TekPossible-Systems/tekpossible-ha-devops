@@ -233,7 +233,7 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
     name: config.stack_name + config.stack_name + "IAM-EC2IB-InstanceProfile",
     instanceProfileName: String(instance_profile.instanceProfileName),
     instanceTypes: [
-      "t2.micro"
+      "m4.large"
     ]
   });
 
