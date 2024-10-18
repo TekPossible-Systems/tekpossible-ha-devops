@@ -131,14 +131,14 @@ function create_software_workflow(scope: Construct, region_name: string, config:
       sns_email = repo.email_poc;
     }
   });
-  
+
   config.infrastructure_site_branches.forEach(function(branch: string) {
-    const software_codepipeline_sns_topic = new sns.Topic(scope, config.stack_name + '-infra-codepipeline-sns-topic', {
+    const software_codepipeline_sns_topic = new sns.Topic(scope, config.stack_name + '-software-codepipeline-sns-topic', {
       topicName: config.stack_name + '-infra-codepipeline-sns-topic',
       displayName: config.stack_name + "Infrastructure Codepipeline SNS Approval"
     });
   
-    const software_codepipeline_sns_subscription = new sns.Subscription(scope, config.stack_name + "-infra-codepipeline-sns-sub", {
+    const software_codepipeline_sns_subscription = new sns.Subscription(scope, config.stack_name + "-software-codepipeline-sns-sub", {
       topic: software_codepipeline_sns_topic,
       protocol: sns.SubscriptionProtocol.EMAIL,
       endpoint: sns_email
@@ -316,12 +316,12 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
   });
 
   config.infrastructure_site_branches.forEach(function(branch: string) {
-    const image_codepipeline_sns_topic = new sns.Topic(scope, config.stack_name + '-infra-codepipeline-sns-topic', {
+    const image_codepipeline_sns_topic = new sns.Topic(scope, config.stack_name + '-ami-codepipeline-sns-topic', {
       topicName: config.stack_name + '-infra-codepipeline-sns-topic',
       displayName: config.stack_name + "Infrastructure Codepipeline SNS Approval"
     });
   
-    const image_codepipeline_sns_subscription = new sns.Subscription(scope, config.stack_name + "-infra-codepipeline-sns-sub", {
+    const image_codepipeline_sns_subscription = new sns.Subscription(scope, config.stack_name + "-ami-codepipeline-sns-sub", {
       topic: image_codepipeline_sns_topic,
       protocol: sns.SubscriptionProtocol.EMAIL,
       endpoint: sns_email
