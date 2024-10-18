@@ -9,6 +9,7 @@ phases:
         action: ExecuteBash
         inputs:
           commands:
+            - export CDK_STACK_BASE_NAME_LOWER="tekpossible-stratagem"
             - dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm unzip
             - dnf clean all
             - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /root/awscliv2.zip
