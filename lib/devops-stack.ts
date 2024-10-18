@@ -125,7 +125,25 @@ function create_software_workflow(scope: Construct, region_name: string, config:
   // Step 2 - Create codepipeline structures and the pipelines
   var software_pipelines = [] 
 
+  var sns_email = "";
+  config.repos.forEach(function(repo: any){
+    if(repo.type == "software") {
+      sns_email = repo.email_poc;
+    }
+  });
+  
   config.infrastructure_site_branches.forEach(function(branch: string) {
+    const software_codepipeline_sns_topic = new sns.Topic(scope, config.stack_name + '-infra-codepipeline-sns-topic', {
+      topicName: config.stack_name + '-infra-codepipeline-sns-topic',
+      displayName: config.stack_name + "Infrastructure Codepipeline SNS Approval"
+    });
+  
+    const software_codepipeline_sns_subscription = new sns.Subscription(scope, config.stack_name + "-infra-codepipeline-sns-sub", {
+      topic: software_codepipeline_sns_topic,
+      protocol: sns.SubscriptionProtocol.EMAIL,
+      endpoint: sns_email
+    });
+
     const codepipeline_s3_bucket =  new s3.Bucket(scope, config.stack_name + "-sw-pipeline-storage-" + branch, {
       versioned: true, 
       bucketName: config.stack_name.toLowerCase( ) + "-sw-pipeline-storage-" + branch,
@@ -156,6 +174,16 @@ function create_software_workflow(scope: Construct, region_name: string, config:
     const infra_pipeline_src = software_codepipeline.addStage({
       stageName: "Source",
       actions: [software_pipeline_src_action]
+    });
+
+    const infra_pipeline_approval_action = new codepipeline_actions.ManualApprovalAction({
+      actionName: "DeployApproval",
+      notificationTopic: software_codepipeline_sns_topic
+    });
+  
+    const infra_pipeline_approval_stage = software_codepipeline.addStage({
+      stageName: "DeployApproval",
+      actions: [infra_pipeline_approval_action]
     });
 
     const software_pipeline_codebuild_pre = new codepipeline_actions.CodeBuildAction({ // Codebuild will build the software code, make it into a tar, and then commit the git tag/tar file the image repo
@@ -280,7 +308,25 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
   // Step 3 - Create the codepipeline the triggers the above pipeline. Not sure how we will determine when the ec2 imagebuilder image is ready but we will need to both trigger and determine the results of the pipeline via awscli (so therefore I will use codebuild to do that)
   var image_pipelines = [];
 
+  var sns_email = "";
+  config.repos.forEach(function(repo: any){
+    if(repo.type == "ami") {
+      sns_email = repo.email_poc;
+    }
+  });
+
   config.infrastructure_site_branches.forEach(function(branch: string) {
+    const image_codepipeline_sns_topic = new sns.Topic(scope, config.stack_name + '-infra-codepipeline-sns-topic', {
+      topicName: config.stack_name + '-infra-codepipeline-sns-topic',
+      displayName: config.stack_name + "Infrastructure Codepipeline SNS Approval"
+    });
+  
+    const image_codepipeline_sns_subscription = new sns.Subscription(scope, config.stack_name + "-infra-codepipeline-sns-sub", {
+      topic: image_codepipeline_sns_topic,
+      protocol: sns.SubscriptionProtocol.EMAIL,
+      endpoint: sns_email
+    });
+
     const codepipeline_s3_bucket =  new s3.Bucket(scope, config.stack_name + "-ami-pipeline-storage-" + branch, {
       versioned: true, 
       bucketName: config.stack_name.toLowerCase( ) + "-ami-pipeline-storage-" + branch,
@@ -312,6 +358,16 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
     const infra_pipeline_src = image_codepipeline.addStage({
       stageName: "Source",
       actions: [image_pipeline_src_action]
+    });
+
+    const infra_pipeline_approval_action = new codepipeline_actions.ManualApprovalAction({
+      actionName: "DeployApproval",
+      notificationTopic: image_codepipeline_sns_topic
+    });
+  
+    const infra_pipeline_approval_stage = image_codepipeline.addStage({
+      stageName: "DeployApproval",
+      actions: [infra_pipeline_approval_action]
     });
 
     const image_codepipline_codebuild_pre = new codepipeline_actions.CodeBuildAction({ // Codebuild will build the software code, make it into a tar, and then commit the git tag/tar file the image repo
