@@ -131,10 +131,10 @@ function create_software_workflow(scope: Construct, region_name: string, config:
       sns_email = repo.email_poc;
     }
   });
-  
+
   const software_codepipeline_sns_topic = new sns.Topic(scope, config.stack_name + '-software-codepipeline-sns-topic', {
-    topicName: config.stack_name + '-infra-codepipeline-sns-topic',
-    displayName: config.stack_name + "Infrastructure Codepipeline SNS Approval"
+    topicName: config.stack_name + '-software-codepipeline-sns-topic',
+    displayName: config.stack_name + "Software Codepipeline SNS Approval"
   });
 
   const software_codepipeline_sns_subscription = new sns.Subscription(scope, config.stack_name + "-software-codepipeline-sns-sub", {
@@ -317,8 +317,8 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
   });
 
   const image_codepipeline_sns_topic = new sns.Topic(scope, config.stack_name + '-ami-codepipeline-sns-topic', {
-    topicName: config.stack_name + '-infra-codepipeline-sns-topic',
-    displayName: config.stack_name + "Infrastructure Codepipeline SNS Approval"
+    topicName: config.stack_name + '-ami-codepipeline-sns-topic',
+    displayName: config.stack_name + "AMI Codepipeline SNS Approval"
   });
 
   const image_codepipeline_sns_subscription = new sns.Subscription(scope, config.stack_name + "-ami-codepipeline-sns-sub", {
@@ -361,14 +361,14 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
       actions: [image_pipeline_src_action]
     });
 
-    const infra_pipeline_approval_action = new codepipeline_actions.ManualApprovalAction({
+    const image_pipeline_approval_action = new codepipeline_actions.ManualApprovalAction({
       actionName: "DeployApproval",
       notificationTopic: image_codepipeline_sns_topic
     });
   
-    const infra_pipeline_approval_stage = image_codepipeline.addStage({
+    const image_pipeline_approval_stage = image_codepipeline.addStage({
       stageName: "DeployApproval",
-      actions: [infra_pipeline_approval_action]
+      actions: [image_pipeline_approval_action]
     });
 
     const image_codepipline_codebuild_pre = new codepipeline_actions.CodeBuildAction({ // Codebuild will build the software code, make it into a tar, and then commit the git tag/tar file the image repo
