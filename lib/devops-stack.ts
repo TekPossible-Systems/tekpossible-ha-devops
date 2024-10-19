@@ -112,7 +112,8 @@ function create_software_workflow(scope: Construct, region_name: string, config:
       new iam.ServicePrincipal("cloudformation.amazonaws.com"),
       new iam.ServicePrincipal("sns.amazonaws.com"),
       new iam.ServicePrincipal("codepipeline.amazonaws.com"),
-      new iam.ServicePrincipal("s3.amazonaws.com") 
+      new iam.ServicePrincipal("s3.amazonaws.com"),
+      new iam.ServicePrincipal("ssm.amazonaws.com"),
     ),
     roleName: config.stack_name + '-SW-CodePipelineRole'
 
@@ -121,6 +122,7 @@ function create_software_workflow(scope: Construct, region_name: string, config:
   software_codepipeline_iam_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-SW-CodePipelineMP1", "arn:aws:iam::aws:policy/service-role/AWSCodeStarServiceRole"));
   software_codepipeline_iam_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-SW-CodePipelineMP2", "arn:aws:iam::aws:policy/AmazonS3FullAccess"));
   software_codepipeline_iam_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-SW-CodePipelineMP3", "arn:aws:iam::aws:policy/AWSCodeCommitFullAccess"));
+  software_codepipeline_iam_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-SW-CodePipelineMP4", "arn:aws:iam::aws:policy/AmazonSSMFullAccess"));
 
   // Step 2 - Create codepipeline structures and the pipelines
   var software_pipelines = [] 
@@ -153,7 +155,7 @@ function create_software_workflow(scope: Construct, region_name: string, config:
     });
   
     const software_codepipeline = new codepipeline.Pipeline(scope, config.stack_name + "-SW-Pipeline-" + branch, {
-      pipelineName: config.stack_name + "-SW-Pipeline-" + branch,
+      pipelineName: config.stack_base_name + "-SW-Pipeline-" + branch,
       artifactBucket: codepipeline_s3_bucket,
       restartExecutionOnUpdate: false,
       role: software_codepipeline_iam_role
@@ -169,7 +171,8 @@ function create_software_workflow(scope: Construct, region_name: string, config:
       repository: __software_repo,
       actionName: "SourceAction",
       output: software_pipeline_artifact_src,
-      branch: branch
+      branch: branch,
+      codeBuildCloneOutput: true
     });
   
     const infra_pipeline_src = software_codepipeline.addStage({
@@ -240,7 +243,8 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
       new iam.ServicePrincipal("sns.amazonaws.com"),
       new iam.ServicePrincipal("codepipeline.amazonaws.com"),
       new iam.ServicePrincipal("s3.amazonaws.com"),
-      new iam.ServicePrincipal("imagebuilder.amazonaws.com")
+      new iam.ServicePrincipal("imagebuilder.amazonaws.com"),
+      new iam.ServicePrincipal("ssm.amazonaws.com")
     ),
     roleName: config.stack_name + '-Image-CodePipelineRole'
 
@@ -250,6 +254,7 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
   image_codepipeline_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-CPMP2", "arn:aws:iam::aws:policy/AmazonS3FullAccess"));
   image_codepipeline_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-CPMP3", "arn:aws:iam::aws:policy/AWSImageBuilderFullAccess"));
   image_codepipeline_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-CPMP4", "arn:aws:iam::aws:policy/AWSCodeCommitFullAccess"));
+  image_codepipeline_role.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(scope, config.stack_name + "-AMI-CPMP5", "arn:aws:iam::aws:policy/AmazonSSMFullAccess"));
 
   // Step 2 - Create the Image Pipeline - Make the image pipeline run stuff from the configs based off of the ami repo config
   // Create the precursor configs
@@ -292,7 +297,7 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
 
   // create the image pipeline
   const image_pipeline = new imagebuilder.CfnImagePipeline(scope, config.stack_name + "-ImagePipeline", {
-    name: config.stack_name + "-ImagePipeline",
+    name: config.stack_base_name + "-ImagePipeline",
     infrastructureConfigurationArn: infrastucture_config.attrArn,
     imageRecipeArn: image_recipe.attrArn,
     // distributionConfigurationArn: "",
@@ -336,7 +341,7 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
     });
   
     const image_codepipeline = new codepipeline.Pipeline(scope, config.stack_name + "-AMI-Pipeline-" + branch, {
-      pipelineName: config.stack_name + "-AMI-Pipeline-" + branch,
+      pipelineName: config.stack_base_name + "-AMI-Pipeline-" + branch,
       artifactBucket: codepipeline_s3_bucket,
       restartExecutionOnUpdate: false,
       role: image_codepipeline_role
@@ -353,7 +358,8 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
       repository: __image_repo,
       actionName: "SourceAction",
       output: image_codepipeline_artifact_src,
-      branch: branch
+      branch: branch,
+      codeBuildCloneOutput: true
     });
   
     const infra_pipeline_src = image_codepipeline.addStage({
@@ -449,7 +455,7 @@ function create_infrastructure_workflow(scope: Construct, region_name: string, c
     });
   
     const infra_codepipeline = new codepipeline.Pipeline(scope, config.stack_name + "-Infra-Pipeline-" + branch, {
-      pipelineName: config.stack_name + "-Infra-Pipeline-" + branch,
+      pipelineName: config.stack_base_name + "-Infra-Pipeline-" + branch,
       artifactBucket: codepipeline_s3_bucket,
       restartExecutionOnUpdate: false,
       role: infra_codepipeline_iam_role
