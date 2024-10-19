@@ -12,7 +12,7 @@
             "name": "tekpossible-gem-ami",
             "desc": "TekPossible STRATAGEM Image Repository",
             "type": "ami",
-            "email_poc": "infrastructure-gem@tekpossible.com"
+            "email_poc": "image-cm@tekpossible.com"
         },
         {
             "name": "tekpossible-gem-software",

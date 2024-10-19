@@ -350,7 +350,7 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
 
     // Triggers on codecommit commit to the branch specified in the loop 
     const image_pipeline_src_action = new codepipeline_actions.CodeCommitSourceAction({
-      repository: __software_repo,
+      repository: __image_repo,
       actionName: "SourceAction",
       output: image_codepipeline_artifact_src,
       branch: branch
