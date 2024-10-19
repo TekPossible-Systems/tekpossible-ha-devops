@@ -29,3 +29,4 @@ phases:
             - chmod 700 -R ./*
             - cd ./*ami*
             - bash ./setup_image.sh
+            - bash /staging/software_staging.sh
