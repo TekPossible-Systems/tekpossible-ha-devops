@@ -52,7 +52,7 @@ function create_s3_transition_bucket(scope: Construct, region_name: string, conf
   });
 
   __region_parameter = new ssm.StringParameter(scope, config.stack_name + "AWS-REGION-Parameter", {
-      parameterName: config.stack_base_name.toLowerCase() + 'region',
+      parameterName: config.stack_base_name.toLowerCase() + '-region',
       stringValue: config.region
   });
 
