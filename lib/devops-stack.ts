@@ -24,6 +24,7 @@ var __transition_s3_bucket: any;
 var __transition_s3_bucket_parameter: any;
 var ssm_repo_parameters = [];
 var __image_pipeline_arn_parameter: any;
+var __region_parameter: any;
 /* 
 General Gameplan for DevOps portion of TekPossible HA Project:
 The whole point of this devops repo is to create a workflow in which you can have preconfigured os images software releases, and overall infrastructure configs. 
@@ -48,6 +49,11 @@ function create_s3_transition_bucket(scope: Construct, region_name: string, conf
   {
     parameterName:  config.stack_base_name.toLowerCase() + '-s3-bucket',
     stringValue: __transition_s3_bucket.bucketName
+  });
+
+  __region_parameter = new ssm.StringParameter(scope, config.stack_name + "AWS-REGION-Parameter", {
+      parameterName: config.stack_base_name.toLowerCase() + 'region',
+      stringValue: config.region
   });
 
 }
