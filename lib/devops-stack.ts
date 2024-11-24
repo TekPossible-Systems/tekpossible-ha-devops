@@ -392,7 +392,7 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
           computeType: codebuild.ComputeType.SMALL,
           
         },
-        timeout: cdk.Duration.minutes(120),
+        timeout: cdk.Duration.hours(2),
         role: image_codepipeline_role
       }),
       outputs: [image_codepipeline_artifact_out]
