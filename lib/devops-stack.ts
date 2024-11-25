@@ -392,7 +392,7 @@ function create_image_workflow(scope: Construct, region_name: string, config: an
           computeType: codebuild.ComputeType.SMALL,
           
         },
-        timeout: cdk.Duration.hours(2),
+        timeout: cdk.Duration.hours(2),  // Note: https://repost.aws/questions/QUNe84jgBRQ9G5ACLDUzCt4w/free-tier-account-s-codebuild-stops-after-45min
         role: image_codepipeline_role
       }),
       outputs: [image_codepipeline_artifact_out]
