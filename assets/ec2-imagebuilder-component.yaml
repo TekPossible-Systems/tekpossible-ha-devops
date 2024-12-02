@@ -29,3 +29,29 @@ phases:
             - chmod 700 -R ./*
             - cd ./*ami*
             - bash ./setup_image.sh
+  - name: test
+    steps:
+      - name: RHEL9Test
+        action: ExecuteBash
+        inputs:
+          commands:
+            - export CDK_STACK_BASE_NAME_LOWER="tekpossible-stratagem"
+            - dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm unzip
+            - dnf clean all
+            - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /root/awscliv2.zip
+            - cd /root
+            - unzip awscliv2.zip
+            - ./aws/install
+            - ln -s /usr/local/bin/aws /usr/bin/aws
+            - dnf install -y ansible-core git python3-pip wget ruby
+            - dnf update -y
+            - pip3 install git-remote-codecommit
+            - git config --global credential.helper '!aws codecommit credential-helper $@'
+            - git config --global credential.UseHttpPath true
+            - mkdir /staging
+            - cd /staging/
+            - git clone $(aws ssm get-parameter --name $CDK_STACK_BASE_NAME_LOWER-image-repo --query 'Parameter.Value' | sed 's/"//g')
+            - chown -R $(whoami) ./*
+            - chmod 700 -R ./*
+            - cd ./*ami*
+            - bash ./test_image.sh
