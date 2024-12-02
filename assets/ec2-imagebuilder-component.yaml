@@ -48,6 +48,7 @@ phases:
             - pip3 install git-remote-codecommit
             - git config --global credential.helper '!aws codecommit credential-helper $@'
             - git config --global credential.UseHttpPath true
+            - rm -rf /staging
             - mkdir /staging
             - cd /staging/
             - git clone $(aws ssm get-parameter --name $CDK_STACK_BASE_NAME_LOWER-image-repo --query 'Parameter.Value' | sed 's/"//g')
